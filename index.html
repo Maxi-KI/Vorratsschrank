@@ -46,12 +46,10 @@ nav .badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--bad);
 .nm{flex:1;min-width:0;text-align:left}
 .nm b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nm small{color:var(--mute);font-size:12px}
-.pill{font-size:12px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);color:var(--mute);min-width:58px;text-align:center}
-.pill.o1{border:1px solid var(--acc);background:var(--acc-soft);color:var(--acc);font-weight:600}
-.pill.o2{border:1px solid var(--warn);color:var(--warn);font-weight:600}
+.tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);border:1px solid var(--warn);border-radius:5px;padding:0 4px;margin-left:4px;vertical-align:1px}
 .step{display:flex;align-items:center;background:var(--bg);border-radius:10px}
-.step button{width:34px;height:34px;font-size:19px;color:var(--acc)}
-.step span{min-width:18px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.step button{width:36px;height:34px;font-size:15px;font-weight:600;color:var(--acc)}
+.step span{min-width:30px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
 .fab{position:fixed;right:18px;bottom:calc(74px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:var(--acc);color:#fff;font-size:28px;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:9}
 .banner{display:flex;align-items:center;gap:10px;background:var(--acc-soft);color:var(--ink);border-radius:12px;padding:10px 12px;margin:4px 0 10px;font-size:14px}
 .banner button{margin-left:auto;background:var(--acc);color:#fff;padding:6px 12px;border-radius:9px;font-weight:600;font-size:13px;white-space:nowrap}
@@ -82,10 +80,11 @@ label.l{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-we
 .chk{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:22px 18px;margin-top:10px;text-align:center}
 .chk .cat{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
 .chk .big{font-size:24px;font-weight:700;margin:6px 0 18px}
-.chk .ctl{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
-.chk .step button{width:46px;height:46px;font-size:24px}
-.chk .step span{min-width:30px;font-size:20px}
-.chk .pill{font-size:14px;padding:12px 14px;min-width:96px}
+.chk .step{display:inline-flex}
+.chk .step button{width:54px;height:48px;font-size:18px}
+.chk .step span{min-width:56px;font-size:24px}
+.chk .quick{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.chk .quick button{padding:7px 12px;border-radius:9px;border:1px solid var(--line);font-size:13px}
 .prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0 2px}
 .prog i{display:block;height:100%;background:var(--acc)}
 .nav2{display:flex;gap:8px;margin-top:14px}
@@ -104,16 +103,29 @@ label.l{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-we
   <button data-t="mehr"><span class="ic">⋯</span>Mehr</button>
 </nav>
 <script>
-const VERSION='1.1';
+const VERSION='1.2';
 const KEY='vorrat-v1';
 const CATS=['Nudeln & Reis','Konserven & Gläser','Backen','Gewürze & Öl','Frühstück','Snacks & Süßes','Getränke','Sonstiges'];
-const OPEN=['','offen','Rest'];
+const PROMPT=`Erkenne auf dem Foto alle Lebensmittel bzw. Vorräte. Gib NUR eine Liste aus, ohne Einleitung und ohne Tabelle, eine Zeile pro Produkt im Format:
+Name | Kategorie | Anzahl Packungen
+Zähle einfach jede sichtbare Packung, Dose oder jedes Glas als 1, egal ob voll oder angebrochen. Den Füllstand trage ich selbst nach.
+Kategorien (genau so schreiben): ${CATS.join(', ')}.
+Gleiche Produkte zusammenfassen. Kurze, allgemeine Namen ohne Marke (z. B. "Spaghetti", "Passierte Tomaten"). Wenn du dir bei einem Produkt unsicher bist, setze ein "?" hinter den Namen.`;
 
 let S=load(), tab='vorrat', q='', cf='Alle', chk=null;
 
 function load(){
   const d={items:[],extras:[],lastCheck:null};
-  try{const r=localStorage.getItem(KEY);if(r)return Object.assign(d,JSON.parse(r));}catch(e){}
+  try{const r=localStorage.getItem(KEY);if(r)Object.assign(d,JSON.parse(r));}catch(e){}
+  return migrate(d);
+}
+// Alte Daten (geschlossene Packungen + offen/Rest) in eine Packungs-Zahl umrechnen.
+function migrate(d){
+  d.items.forEach(i=>{
+    if(i.qty==null){i.qty=(i.full||0)+(i.open?0.5:0);}
+    delete i.full;delete i.open;
+    if(i.min==null)i.min=1;
+  });
   return d;
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Speichern fehlgeschlagen');}updBadge();updSub();}
@@ -122,28 +134,24 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const byId=id=>S.items.find(i=>i.id===id);
 const sortNm=(a,b)=>a.name.localeCompare(b.name,'de');
 
-// Reserve-Prinzip: nachkaufen, wenn weniger geschlossene Packungen da sind als der Mindestbestand.
-function st(it){
-  if(it.min===0) return (it.full===0&&!it.open)?'off':'ok';
-  if(it.full>=it.min) return 'ok';
-  return (it.full===0&&!it.open)?'leer':'knapp';
-}
-function needs(it){return it.min>0&&it.full<it.min;}
-function desc(it){
-  const s=st(it), parts=[];
-  if(it.full) parts.push(it.full+(it.full===1?' Packung':' Packungen'));
-  if(it.open) parts.push(OPEN[it.open]==='Rest'?'Rest offen':'1 offen');
-  if(!parts.length) parts.push('leer');
-  if(s==='knapp') parts.push(it.full===0?'keine Reserve':'Reserve unter '+it.min);
-  return parts.join(' · ');
-}
+// Mengen in halben Packungen: 1.5 → "1½", 0.5 → "½"
+function fmt(n){const w=Math.floor(n),h=n-w>=0.5;return w===0?(h?'½':'0'):w+(h?'½':'');}
+function fmtLong(n){return n===0?'leer':fmt(n)+(n<=1?' Packung':' Packungen');}
 
-// Anbrechen nimmt eine geschlossene Packung weg; Rest → aufgebraucht.
-function cycleOpen(it){
-  if(!it.open){ if(it.full>0) it.full--; it.open=1; }
-  else if(it.open===1) it.open=2;
-  else it.open=0;
+// Nachkaufen, sobald weniger als der Mindestbestand da ist (Standard 1 = keine volle Packung Reserve).
+function st(it){
+  if(it.min===0) return it.qty===0?'off':'ok';
+  if(it.qty>=it.min) return 'ok';
+  return it.qty===0?'leer':'knapp';
 }
+function needs(it){return it.min>0&&it.qty<it.min;}
+function desc(it){
+  let t=fmtLong(it.qty);
+  if(st(it)==='knapp')t+=' · unter Mindestbestand '+it.min;
+  return t;
+}
+const dec=it=>{it.qty=Math.max(0,Math.round((it.qty-0.5)*2)/2);};
+const unchecked=()=>S.items.filter(i=>i.chk);
 
 function updBadge(){const n=S.items.filter(needs).length+S.extras.length;const b=document.getElementById('bdg');b.hidden=!n;b.textContent=n;}
 function checkDue(){return S.items.length>0&&(!S.lastCheck||Date.now()-S.lastCheck>7*864e5);}
@@ -155,13 +163,18 @@ function updSub(){
 }
 
 function setTab(t){tab=t;if(t!=='check')chk=null;render();window.scrollTo(0,0);}
+function startCheck(onlyNew){
+  const ids=order().filter(id=>!onlyNew||byId(id).chk);
+  if(!ids.length)return;
+  tab='check';chk={ids,i:0,changed:0,onlyNew};render();window.scrollTo(0,0);
+}
 document.getElementById('nav').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t);};
 document.getElementById('fab').onclick=()=>editSheet(null);
 
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   document.getElementById('fab').style.display=tab==='vorrat'?'':'none';
-  document.getElementById('ttl').textContent={vorrat:'Vorrat',nach:'Nachkaufen',check:'Wochen-Check',mehr:'Mehr'}[tab];
+  document.getElementById('ttl').textContent={vorrat:'Vorrat',nach:'Nachkaufen',check:'Check',mehr:'Mehr'}[tab];
   ({vorrat:vVorrat,nach:vNach,check:vCheck,mehr:vMehr})[tab]();
   updBadge();updSub();
 }
@@ -171,11 +184,17 @@ function vVorrat(){
   const v=document.getElementById('view');
   if(!S.items.length){
     v.innerHTML=`<div class="empty"><div style="font-size:40px">🫙</div><p>Noch nichts im Vorrat.</p>
-    <p class="legend">Tippe unten rechts auf <b>+</b>, um den ersten Artikel anzulegen.</p></div>`;return;
+    <p class="legend">Tippe auf <b>+</b> oder fotografiere den Schrank und nutze den Foto-Import unter <b>Mehr</b>.</p>
+    <button class="btn" style="margin-top:14px" onclick="setTab('mehr')">Zum Foto-Import</button></div>`;return;
   }
-  v.innerHTML=(checkDue()?`<div class="banner">Wochen-Check fällig<button onclick="setTab('check')">Starten</button></div>`:'')+
-  `<input class="search" id="q" type="search" placeholder="Suchen …" value="${esc(q)}">
+  const nNew=unchecked().length;
+  let ban='';
+  if(nNew) ban=`<div class="banner">${nNew} importierte Artikel: Füllstand prüfen<button id="bnew">Prüfen</button></div>`;
+  else if(checkDue()) ban=`<div class="banner">Wochen-Check fällig<button id="bchk">Starten</button></div>`;
+  v.innerHTML=ban+`<input class="search" id="q" type="search" placeholder="Suchen …" value="${esc(q)}">
    <div class="chips" id="chips"></div><div id="list"></div>`;
+  const bn=document.getElementById('bnew');if(bn)bn.onclick=()=>startCheck(true);
+  const bc=document.getElementById('bchk');if(bc)bc.onclick=()=>startCheck(false);
   const qi=document.getElementById('q');
   qi.oninput=()=>{q=qi.value;renderList();};
   renderChips();renderList();
@@ -190,9 +209,8 @@ function renderChips(){
 function rowHtml(it){
   return `<div class="row" data-id="${it.id}">
     <span class="dot ${st(it)}"></span>
-    <button class="nm" data-a="edit"><b>${esc(it.name)}</b><small>${esc(desc(it))}</small></button>
-    <button class="pill ${it.open?'o'+it.open:''}" data-a="open">${it.open?(it.open===1?'◐ offen':'◔ Rest'):'anbrechen'}</button>
-    <div class="step"><button data-a="dec" aria-label="weniger">−</button><span>${it.full}</span><button data-a="inc" aria-label="mehr">+</button></div>
+    <button class="nm" data-a="edit"><b>${esc(it.name)}${it.chk?'<span class="tag">prüfen</span>':''}</b><small>${esc(desc(it))}</small></button>
+    <div class="step"><button data-a="dec" aria-label="halbe Packung weniger">−½</button><span>${fmt(it.qty)}</span><button data-a="inc" aria-label="eine Packung mehr">+1</button></div>
   </div>`;
 }
 function renderList(){
@@ -204,22 +222,19 @@ function renderList(){
     const g=items.filter(i=>i.cat===c).sort(sortNm);
     return g.length?`<div class="grp">${esc(c)}</div><div class="list">${g.map(rowHtml).join('')}</div>`:'';
   }).join('');
-  el.onclick=rowAction(()=>renderList());
-}
-function rowAction(after){
-  return e=>{
+  el.onclick=e=>{
     const b=e.target.closest('[data-a]');if(!b)return;
     const it=byId(b.closest('[data-id]').dataset.id);if(!it)return;
     const a=b.dataset.a;
     if(a==='edit'){editSheet(it);return;}
-    if(a==='inc')it.full++;
-    if(a==='dec'){if(it.full>0)it.full--;else return;}
-    if(a==='open')cycleOpen(it);
-    it.upd=Date.now();save();after();
+    if(a==='inc')it.qty+=1;
+    if(a==='dec'){if(it.qty===0)return;dec(it);}
+    it.upd=Date.now();save();renderList();
   };
 }
 
 /* ---------- Nachkaufen ---------- */
+function buyQty(it){return Math.max(1,Math.ceil(it.min-it.qty));}
 function vNach(){
   const v=document.getElementById('view');
   const n=S.items.filter(needs).sort((a,b)=>(st(a)==='leer'?0:1)-(st(b)==='leer'?0:1)||sortNm(a,b));
@@ -234,14 +249,14 @@ function vNach(){
   h+=`<div class="grp">Sonstiges</div>
     <div class="list" id="xl">${S.extras.map((x,i)=>`<div class="row"><div class="nm"><b>${esc(x)}</b></div><button class="btn sm sec" data-i="${i}">Erledigt</button></div>`).join('')}</div>
     <div class="addrow"><input class="search" id="xin" placeholder="Etwas anderes notieren …"><button class="btn sm" id="xadd">＋</button></div>
-    <p class="legend" style="margin-top:14px">Auf der Liste landet alles, wovon weniger geschlossene Packungen da sind als der Mindestbestand (Standard: 1, also „keine Reserve mehr“). „Gekauft“ bucht die Packungen direkt in den Vorrat.</p>`;
+    <p class="legend" style="margin-top:14px">Hier landet alles, wovon weniger als der Mindestbestand da ist (Standard: 1, also keine volle Packung mehr). „Gekauft“ bucht die Packungen direkt in den Vorrat.</p>`;
   v.innerHTML=h;
   const nl=document.getElementById('nl');
   if(nl)nl.onclick=e=>{
     const b=e.target.closest('[data-a="buy"]');if(!b)return;
-    const it=byId(b.closest('[data-id]').dataset.id);const prev={full:it.full};const add=buyQty(it);
-    it.full+=add;it.upd=Date.now();save();vNach();
-    toast(`${it.name}: +${add} eingebucht`,()=>{it.full=prev.full;save();vNach();});
+    const it=byId(b.closest('[data-id]').dataset.id);const prev=it.qty;const add=buyQty(it);
+    it.qty+=add;it.upd=Date.now();save();vNach();
+    toast(`${it.name}: +${add} eingebucht`,()=>{it.qty=prev;save();vNach();});
   };
   document.getElementById('xl').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i;const x=S.extras.splice(i,1)[0];save();vNach();toast('Erledigt',()=>{S.extras.splice(i,0,x);save();vNach();});};
   const xi=document.getElementById('xin');
@@ -250,7 +265,6 @@ function vNach(){
   xi.onkeydown=e=>{if(e.key==='Enter')addX();};
   const sh=document.getElementById('share');if(sh)sh.onclick=shareList;
 }
-function buyQty(it){return Math.max(1,it.min-it.full);}
 async function shareList(){
   const n=S.items.filter(needs).sort(sortNm);
   const lines=[...n.map(i=>'• '+i.name+(buyQty(i)>1?' ('+buyQty(i)+'×)':'')),...S.extras.map(x=>'• '+x)];
@@ -259,55 +273,56 @@ async function shareList(){
   try{await navigator.clipboard.writeText(text);toast('Liste kopiert');}catch(e){toast('Teilen nicht möglich');}
 }
 
-/* ---------- Wochen-Check ---------- */
+/* ---------- Check ---------- */
 function order(){const o=[];CATS.forEach(c=>S.items.filter(i=>i.cat===c).sort(sortNm).forEach(i=>o.push(i.id)));return o;}
 function vCheck(){
   const v=document.getElementById('view');
   if(!S.items.length){v.innerHTML=`<div class="empty">Erst Artikel anlegen, dann lohnt der Check.</div>`;return;}
   if(!chk){
     const last=S.lastCheck?new Date(S.lastCheck).toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}):'noch nie';
-    v.innerHTML=`<div class="card"><h3>Einmal durch den Schrank</h3>
+    const nNew=unchecked().length;
+    v.innerHTML=(nNew?`<div class="card"><h3>Importierte Artikel prüfen</h3><p>${nNew} Artikel aus dem Foto-Import. Hier nur kurz den Füllstand nachtragen.</p><button class="btn" id="gonew">Nur diese prüfen</button></div>`:'')+
+      `<div class="card"><h3>Wochen-Check</h3>
       <p>${S.items.length} Artikel, jeweils kurz bestätigen oder korrigieren. Dauert etwa ${Math.max(1,Math.round(S.items.length*4/60))} Min.</p>
       <p>Letzter Check: ${esc(last)}</p>
-      <button class="btn" id="go">Check starten</button></div>
-      <p class="legend">Reihenfolge nach Kategorien, so wie du vermutlich auch durch den Schrank gehst. Änderungen werden sofort gespeichert; du kannst jederzeit abbrechen.</p>`;
-    document.getElementById('go').onclick=()=>{chk={ids:order(),i:0,changed:0};vCheck();};
+      <button class="btn ${nNew?'sec':''}" id="go">Check starten</button></div>
+      <p class="legend">Reihenfolge nach Kategorien. Änderungen werden sofort gespeichert; du kannst jederzeit abbrechen.</p>`;
+    document.getElementById('go').onclick=()=>startCheck(false);
+    const gn=document.getElementById('gonew');if(gn)gn.onclick=()=>startCheck(true);
     return;
   }
   if(chk.i>=chk.ids.length){
-    S.lastCheck=Date.now();save();
+    if(!chk.onlyNew)S.lastCheck=Date.now();
+    save();
     const k=S.items.filter(needs).length;
-    v.innerHTML=`<div class="chk"><div style="font-size:44px">✓</div><div class="big">Check erledigt</div>
+    v.innerHTML=`<div class="chk"><div style="font-size:44px">✓</div><div class="big">${chk.onlyNew?'Import geprüft':'Check erledigt'}</div>
       <p style="color:var(--mute)">${chk.changed} Artikel korrigiert · ${k} auf der Nachkaufen-Liste</p>
       ${k?`<button class="btn" onclick="setTab('nach')">Zur Nachkaufen-Liste</button>`:''}</div>`;
     chk=null;return;
   }
   const it=byId(chk.ids[chk.i]);
   if(!it){chk.i++;vCheck();return;}
-  const snap=JSON.stringify([it.full,it.open]);
+  const snap=it.qty;
   v.innerHTML=`<div class="prog"><i style="width:${chk.i/chk.ids.length*100}%"></i></div>
     <div class="legend">${chk.i+1} von ${chk.ids.length}</div>
     <div class="chk" data-id="${it.id}">
       <div class="cat">${esc(it.cat)}</div><div class="big">${esc(it.name)}</div>
-      <div class="ctl">
-        <div class="step"><button data-a="dec">−</button><span>${it.full}</span><button data-a="inc">+</button></div>
-        <button class="pill ${it.open?'o'+it.open:''}" data-a="open">${it.open?(it.open===1?'◐ offen':'◔ Rest'):'nichts offen'}</button>
-      </div>
-      <div class="legend" style="margin-top:10px">geschlossene Packungen · angebrochene Packung</div>
+      <div class="step"><button data-d="-0.5">−½</button><span id="cq">${fmt(it.qty)}</span><button data-d="0.5">+½</button></div>
+      <div class="legend" style="margin-top:8px">Packungen</div>
+      <div class="quick">${[0,0.5,1,2].map(n=>`<button data-s="${n}">${n===0?'leer':fmt(n)}</button>`).join('')}</div>
     </div>
     <div class="nav2"><button class="btn sec" id="back" ${chk.i===0?'disabled style="opacity:.4"':''}>Zurück</button><button class="btn" id="nx">Passt ✓</button></div>
     <button class="btn sec" style="margin-top:8px" id="stop">Abbrechen</button>`;
   const box=v.querySelector('.chk');
   box.onclick=e=>{
-    const b=e.target.closest('[data-a]');if(!b)return;
-    if(b.dataset.a==='inc')it.full++;
-    if(b.dataset.a==='dec'&&it.full>0)it.full--;
-    if(b.dataset.a==='open'){it.open=(it.open+1)%3;} // im Check: Zustand direkt setzen, ohne Packung abzuziehen
-    box.querySelector('.step span').textContent=it.full;
-    const p=box.querySelector('.pill');p.className='pill '+(it.open?'o'+it.open:'');p.textContent=it.open?(it.open===1?'◐ offen':'◔ Rest'):'nichts offen';
-    document.getElementById('nx').textContent=JSON.stringify([it.full,it.open])===snap?'Passt ✓':'Gespeichert, weiter →';
+    const d=e.target.closest('[data-d]'),s=e.target.closest('[data-s]');
+    if(d)it.qty=Math.max(0,it.qty+parseFloat(d.dataset.d));
+    else if(s)it.qty=parseFloat(s.dataset.s);
+    else return;
+    document.getElementById('cq').textContent=fmt(it.qty);
+    document.getElementById('nx').textContent=it.qty===snap?'Passt ✓':'Gespeichert, weiter →';
   };
-  document.getElementById('nx').onclick=()=>{if(JSON.stringify([it.full,it.open])!==snap){chk.changed++;it.upd=Date.now();}save();chk.i++;vCheck();};
+  document.getElementById('nx').onclick=()=>{if(it.qty!==snap)chk.changed++;it.upd=Date.now();delete it.chk;save();chk.i++;vCheck();};
   document.getElementById('back').onclick=()=>{if(chk.i>0){save();chk.i--;vCheck();}};
   document.getElementById('stop').onclick=()=>{save();chk=null;vCheck();};
 }
@@ -316,11 +331,19 @@ function vCheck(){
 function vMehr(){
   const v=document.getElementById('view');
   v.innerHTML=`
+  <div class="card"><h3>📷 Foto-Import</h3>
+    <p>1. Prompt kopieren · 2. In der Claude-App ein Foto vom Schrank machen und den Prompt dazu einfügen · 3. Antwort kopieren und hier einfügen · 4. Füllstand nachtragen.</p>
+    <button class="btn sec" id="cp">Prompt kopieren</button>
+    <label class="l">Erkannte Liste einfügen</label>
+    <textarea class="f" id="imp" placeholder="Spaghetti | Nudeln & Reis | 2&#10;Passierte Tomaten | Konserven & Gläser | 3"></textarea>
+    <div class="hint">Gezählt werden nur Packungen. Neue Artikel werden angelegt, bekannte bekommen die neue Anzahl. Alle importierten Artikel sind danach als „prüfen“ markiert.</div>
+    <button class="btn" style="margin-top:10px" id="ib">Übernehmen</button>
+  </div>
   <div class="card"><h3>So funktioniert's</h3>
     <div class="legend">
-    <b>Zahl</b> = geschlossene Packungen. <b>anbrechen</b> öffnet eine davon (→ ◐ offen). Nochmal tippen → ◔ Rest, nochmal → aufgebraucht.<br>
-    <b>Nachkaufen</b>: sobald weniger geschlossene Packungen da sind als der Mindestbestand (Standard 1). Mindestbestand 0 = kommt nie auf die Liste.<br>
-    <b>Punkte</b>: 🟢 Reserve da · 🟠 nur noch offen / zu wenig · 🔴 leer
+    <b>Zahl</b> = Packungen in halben Schritten. <b>−½</b> beim Verbrauchen, <b>+1</b> beim Einräumen.<br>
+    <b>Nachkaufen</b>: sobald weniger als der Mindestbestand da ist (Standard 1). Mindestbestand 0 = kommt nie auf die Liste.<br>
+    <b>Punkte</b>: 🟢 genug da · 🟠 unter Mindestbestand · 🔴 leer
     </div></div>
   <div class="card"><h3>Sicherung</h3>
     <p>Die Daten liegen nur auf diesem iPhone. Ab und zu sichern schadet nicht.</p>
@@ -330,13 +353,51 @@ function vMehr(){
   </div>
   <button class="btn bad" id="rs">Alle Daten löschen</button>
   <p class="legend" style="text-align:center;margin-top:16px">Vorrat V${VERSION}</p>`;
+  document.getElementById('cp').onclick=async()=>{try{await navigator.clipboard.writeText(PROMPT);toast('Prompt kopiert');}catch(e){toast('Kopieren nicht möglich');}};
+  document.getElementById('ib').onclick=()=>doImport(document.getElementById('imp').value);
   document.getElementById('ex').onclick=exportData;
   document.getElementById('imb').onclick=()=>document.getElementById('fi').click();
   document.getElementById('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{
     try{const d=JSON.parse(r.result);if(!Array.isArray(d.items))throw 0;
-      dialog(`Backup mit ${d.items.length} Artikeln laden? Der aktuelle Stand wird ersetzt.`,'Laden',()=>{S=Object.assign({items:[],extras:[],lastCheck:null},d);save();toast('Backup geladen');render();});
+      dialog(`Backup mit ${d.items.length} Artikeln laden? Der aktuelle Stand wird ersetzt.`,'Laden',()=>{S=migrate(Object.assign({items:[],extras:[],lastCheck:null},d));save();toast('Backup geladen');render();});
     }catch(err){toast('Datei nicht lesbar');}};r.readAsText(f);e.target.value='';};
   document.getElementById('rs').onclick=()=>dialog('Wirklich alle Artikel und Listen löschen?','Löschen',()=>{S={items:[],extras:[],lastCheck:null};save();render();},true);
+}
+function matchCat(x){
+  if(!x)return 'Sonstiges';x=String(x).toLowerCase().trim();if(!x)return 'Sonstiges';
+  return CATS.find(c=>c.toLowerCase()===x)||CATS.find(c=>c.toLowerCase().split(/\s*&\s*/).some(w=>x.includes(w)||w.includes(x)))||'Sonstiges';
+}
+function parseQty(x){
+  if(x==null||String(x).trim()==='')return 1;
+  const n=parseFloat(String(x).replace(',','.').replace('½','.5'));
+  return isNaN(n)?1:Math.max(0,Math.round(n*2)/2);
+}
+function parseImport(txt){
+  txt=(txt||'').trim();let rows=[];
+  if(/^[\[{]/.test(txt)){
+    try{let d=JSON.parse(txt);if(d.items)d=d.items;rows=d.map(o=>({name:o.name,cat:o.cat||o.kategorie,qty:o.qty??o.anzahl}));}catch(e){}
+  } else {
+    txt.split('\n').forEach(l=>{
+      l=l.trim().replace(/^(?:[-•*]|\d+[.)])\s+/,'').replace(/^\|/,'').replace(/\|$/,'').trim();
+      if(!l||/^[-\s|:]+$/.test(l)||/^name\s*[|;]/i.test(l))return;
+      const p=l.split(/\s*[|;\t]\s*/);rows.push({name:p[0],cat:p[1],qty:p[2]});
+    });
+  }
+  return rows.filter(r=>r.name&&String(r.name).trim()).map(r=>({name:String(r.name).trim(),cat:matchCat(r.cat),qty:parseQty(r.qty)}));
+}
+function doImport(txt){
+  const rows=parseImport(txt);
+  if(!rows.length){toast('Keine Artikel erkannt');return;}
+  let nu=0,up=0;rows.forEach(r=>{S.items.some(i=>i.name.toLowerCase()===r.name.toLowerCase())?up++:nu++;});
+  dialog(`${nu} neue Artikel, ${up} aktualisiert. Danach trägst du den Füllstand nach.`,'Übernehmen',()=>{
+    rows.forEach(r=>{
+      const ex=S.items.find(i=>i.name.toLowerCase()===r.name.toLowerCase());
+      if(ex){ex.qty=r.qty;ex.chk=true;ex.upd=Date.now();}
+      else S.items.push({id:uid(),name:r.name,cat:r.cat,qty:r.qty,min:1,chk:true,upd:Date.now()});
+    });
+    save();document.getElementById('imp').value='';
+    startCheck(true);
+  });
 }
 async function exportData(){
   const d=new Date().toISOString().slice(0,10);
@@ -348,15 +409,15 @@ async function exportData(){
 
 /* ---------- Sheets, Dialoge, Toast ---------- */
 function editSheet(it){
-  const isNew=!it;const d=it||{name:'',cat:cf!=='Alle'?cf:CATS[0],full:1,open:0,min:1};
-  let full=d.full,min=d.min;
+  const isNew=!it;const d=it||{name:'',cat:cf!=='Alle'?cf:CATS[0],qty:1,min:1};
+  let qty=d.qty,min=d.min;
   const ov=document.createElement('div');ov.className='ov';
   ov.innerHTML=`<div class="sheet">
     <h2>${isNew?'Neuer Artikel':'Artikel bearbeiten'}</h2>
     <label class="l">Name</label><input class="f" id="en" value="${esc(d.name)}" placeholder="z. B. Basmati-Reis" autocomplete="off">
     <label class="l">Kategorie</label><select class="f" id="ec">${CATS.map(c=>`<option ${c===d.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
     <div style="display:flex;gap:16px">
-      <div style="flex:1"><label class="l">Geschlossene Packungen</label><div class="step" style="width:fit-content"><button data-s="f-">−</button><span id="ef">${full}</span><button data-s="f+">+</button></div></div>
+      <div style="flex:1"><label class="l">Packungen</label><div class="step" style="width:fit-content"><button data-s="q-">−½</button><span id="eq">${fmt(qty)}</span><button data-s="q+">+½</button></div></div>
       <div style="flex:1"><label class="l">Mindestbestand</label><div class="step" style="width:fit-content"><button data-s="m-">−</button><span id="em">${min}</span><button data-s="m+">+</button></div></div>
     </div>
     <div class="hint" id="eh"></div>
@@ -364,12 +425,12 @@ function editSheet(it){
     ${isNew?'':'<button class="btn bad" style="margin-top:10px" id="edel">Löschen</button>'}
   </div>`;
   document.body.appendChild(ov);
-  const hint=()=>{ov.querySelector('#eh').textContent=min===0?'Kommt nie auf die Nachkaufen-Liste.':`Auf die Liste, sobald weniger als ${min} geschlossene ${min===1?'Packung':'Packungen'} da ${min===1?'ist':'sind'}.`;};hint();
+  const hint=()=>{ov.querySelector('#eh').textContent=min===0?'Kommt nie auf die Nachkaufen-Liste.':`Auf die Liste, sobald weniger als ${min} ${min===1?'Packung':'Packungen'} da ${min===1?'ist':'sind'}.`;};hint();
   ov.onclick=e=>{
     if(e.target===ov){ov.remove();return;}
     const s=e.target.closest('[data-s]');if(!s)return;
-    const k=s.dataset.s;if(k==='f-')full=Math.max(0,full-1);if(k==='f+')full++;if(k==='m-')min=Math.max(0,min-1);if(k==='m+')min++;
-    ov.querySelector('#ef').textContent=full;ov.querySelector('#em').textContent=min;hint();
+    const k=s.dataset.s;if(k==='q-')qty=Math.max(0,qty-0.5);if(k==='q+')qty+=0.5;if(k==='m-')min=Math.max(0,min-1);if(k==='m+')min++;
+    ov.querySelector('#eq').textContent=fmt(qty);ov.querySelector('#em').textContent=min;hint();
   };
   ov.querySelector('#ecx').onclick=()=>ov.remove();
   ov.querySelector('#eok').onclick=()=>{
@@ -377,8 +438,8 @@ function editSheet(it){
     const dup=S.items.find(i=>i.name.toLowerCase()===name.toLowerCase()&&i!==it);
     if(dup){toast('Gibt es schon');return;}
     const cat=ov.querySelector('#ec').value;
-    if(isNew)S.items.push({id:uid(),name,cat,full,open:0,min,upd:Date.now()});
-    else Object.assign(it,{name,cat,full,min,upd:Date.now()});
+    if(isNew)S.items.push({id:uid(),name,cat,qty,min,upd:Date.now()});
+    else{Object.assign(it,{name,cat,qty,min,upd:Date.now()});delete it.chk;}
     save();ov.remove();render();
   };
   const del=ov.querySelector('#edel');
