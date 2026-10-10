@@ -90,6 +90,14 @@ label.l{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-we
 .nav2{display:flex;gap:8px;margin-top:14px}
 .nav2 .btn{flex:1}
 .legend{font-size:12px;color:var(--mute);line-height:1.6}
+.vd{flex:none;font-size:12px;font-weight:700;padding:6px 9px;border-radius:9px;text-align:right;line-height:1.2}
+.vd small{display:block;font-weight:500;font-size:11px;opacity:.85}
+.vd.ok{background:var(--acc-soft);color:var(--ok)}
+.vd.buy{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.vd.leer{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.qb{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.qb button{padding:14px 0;border-radius:12px;border:1px solid var(--line);font-size:17px;font-weight:700}
+.qb button.def{background:var(--acc);color:#fff;border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -98,12 +106,12 @@ label.l{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-we
 <button class="fab" id="fab" aria-label="Artikel hinzufügen">+</button>
 <nav id="nav">
   <button data-t="vorrat"><span class="ic">🫙</span>Vorrat</button>
-  <button data-t="nach"><span class="ic">🛒</span>Nachkaufen<span class="badge" id="bdg" hidden></span></button>
+  <button data-t="nach"><span class="ic">🛒</span>Einkauf<span class="badge" id="bdg" hidden></span></button>
   <button data-t="check"><span class="ic">✓</span>Check</button>
   <button data-t="mehr"><span class="ic">⋯</span>Mehr</button>
 </nav>
 <script>
-const VERSION='1.2';
+const VERSION='1.3';
 const KEY='vorrat-v1';
 const CATS=['Nudeln & Reis','Konserven & Gläser','Backen','Gewürze & Öl','Frühstück','Snacks & Süßes','Getränke','Sonstiges'];
 const PROMPT=`Erkenne auf dem Foto alle Lebensmittel bzw. Vorräte. Gib NUR eine Liste aus, ohne Einleitung und ohne Tabelle, eine Zeile pro Produkt im Format:
@@ -112,7 +120,7 @@ Zähle einfach jede sichtbare Packung, Dose oder jedes Glas als 1, egal ob voll 
 Kategorien (genau so schreiben): ${CATS.join(', ')}.
 Gleiche Produkte zusammenfassen. Kurze, allgemeine Namen ohne Marke (z. B. "Spaghetti", "Passierte Tomaten"). Wenn du dir bei einem Produkt unsicher bist, setze ein "?" hinter den Namen.`;
 
-let S=load(), tab='vorrat', q='', cf='Alle', chk=null;
+let S=load(), tab='vorrat', q='', lq='', cf='Alle', chk=null;
 
 function load(){
   const d={items:[],extras:[],lastCheck:null};
@@ -174,7 +182,7 @@ document.getElementById('fab').onclick=()=>editSheet(null);
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   document.getElementById('fab').style.display=tab==='vorrat'?'':'none';
-  document.getElementById('ttl').textContent={vorrat:'Vorrat',nach:'Nachkaufen',check:'Check',mehr:'Mehr'}[tab];
+  document.getElementById('ttl').textContent={vorrat:'Vorrat',nach:'Einkauf',check:'Check',mehr:'Mehr'}[tab];
   ({vorrat:vVorrat,nach:vNach,check:vCheck,mehr:vMehr})[tab]();
   updBadge();updSub();
 }
@@ -238,8 +246,8 @@ function buyQty(it){return Math.max(1,Math.ceil(it.min-it.qty));}
 function vNach(){
   const v=document.getElementById('view');
   const n=S.items.filter(needs).sort((a,b)=>(st(a)==='leer'?0:1)-(st(b)==='leer'?0:1)||sortNm(a,b));
-  let h='';
-  if(n.length||S.extras.length) h+=`<div style="display:flex;justify-content:flex-end;margin:4px 0 2px"><button class="btn sm sec" id="share">Liste teilen ↗</button></div>`;
+  let h=`<input class="search" id="lq" type="search" placeholder="Hab ich noch …?" value="${esc(lq)}" autocomplete="off"><div id="lr"></div>`;
+  if(n.length||S.extras.length) h+=`<div style="display:flex;justify-content:flex-end;margin:10px 0 2px"><button class="btn sm sec" id="share">Liste teilen ↗</button></div>`;
   if(n.length){
     h+=`<div class="grp">Aus dem Vorrat</div><div class="list" id="nl">`+n.map(it=>`<div class="row" data-id="${it.id}">
       <span class="dot ${st(it)}"></span>
@@ -254,16 +262,54 @@ function vNach(){
   const nl=document.getElementById('nl');
   if(nl)nl.onclick=e=>{
     const b=e.target.closest('[data-a="buy"]');if(!b)return;
-    const it=byId(b.closest('[data-id]').dataset.id);const prev=it.qty;const add=buyQty(it);
-    it.qty+=add;it.upd=Date.now();save();vNach();
-    toast(`${it.name}: +${add} eingebucht`,()=>{it.qty=prev;save();vNach();});
+    buySheet(byId(b.closest('[data-id]').dataset.id));
   };
+  const li=document.getElementById('lq');
+  li.oninput=()=>{lq=li.value;renderLookup();};
+  renderLookup();
   document.getElementById('xl').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i;const x=S.extras.splice(i,1)[0];save();vNach();toast('Erledigt',()=>{S.extras.splice(i,0,x);save();vNach();});};
   const xi=document.getElementById('xin');
   const addX=()=>{const t=xi.value.trim();if(!t)return;S.extras.push(t);save();vNach();document.getElementById('xin').focus();};
   document.getElementById('xadd').onclick=addX;
   xi.onkeydown=e=>{if(e.key==='Enter')addX();};
   const sh=document.getElementById('share');if(sh)sh.onclick=shareList;
+}
+// Laden-Modus: Hab ich noch …? → klare Antwort pro Artikel
+function verdict(it){
+  if(st(it)==='leer'&&it.min>0)return `<div class="vd leer">Kaufen<small>leer</small></div>`;
+  if(needs(it))return `<div class="vd buy">Kaufen<small>nur ${fmt(it.qty)} da</small></div>`;
+  return `<div class="vd ok">Nicht kaufen<small>${it.qty===0?'leer, nicht nötig':fmt(it.qty)+' da'}</small></div>`;
+}
+function renderLookup(){
+  const el=document.getElementById('lr');if(!el)return;
+  const ql=lq.trim().toLowerCase();
+  if(!ql){el.innerHTML='';return;}
+  const hits=S.items.filter(i=>i.name.toLowerCase().includes(ql)).sort(sortNm).slice(0,8);
+  el.innerHTML=`<div class="list" style="margin-top:8px">`+
+    hits.map(it=>`<div class="row" data-id="${it.id}"><span class="dot ${st(it)}"></span><div class="nm"><b>${esc(it.name)}</b><small>${esc(it.cat)}</small></div>${verdict(it)}</div>`).join('')+
+    (hits.length?'':`<div class="row"><div class="nm"><b>${esc(lq.trim())}</b><small>nicht im Vorrat erfasst</small></div><button class="btn sm sec" data-x>Auf die Liste</button></div>`)+
+    `</div>`;
+  el.onclick=e=>{
+    if(e.target.closest('[data-x]')){S.extras.push(lq.trim());lq='';save();vNach();toast('Notiert');return;}
+    const r=e.target.closest('[data-id]');if(!r)return;
+    const it=byId(r.dataset.id);if(it&&needs(it))buySheet(it);
+  };
+}
+function buySheet(it){
+  const def=buyQty(it);
+  const ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML=`<div class="sheet"><h2>${esc(it.name)} gekauft</h2>
+    <div class="hint">Wie viele Packungen hast du gekauft? Aktuell da: ${esc(fmtLong(it.qty))}.</div>
+    <div class="qb">${[1,2,3,4].map(n=>`<button data-n="${n}" class="${n===def?'def':''}">+${n}</button>`).join('')}</div>
+    <div class="acts"><button class="btn sec" id="bcx">Abbrechen</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{
+    if(e.target===ov||e.target.id==='bcx'){ov.remove();return;}
+    const b=e.target.closest('[data-n]');if(!b)return;
+    const add=+b.dataset.n,prev=it.qty;
+    it.qty+=add;it.upd=Date.now();save();ov.remove();lq='';vNach();
+    toast(`${it.name}: +${add} eingebucht`,()=>{it.qty=prev;save();vNach();});
+  };
 }
 async function shareList(){
   const n=S.items.filter(needs).sort(sortNm);
@@ -462,6 +508,8 @@ function toast(msg,undo){
 }
 
 render();
+// Offline-Cache, damit die App auch im Laden ohne Netz startet
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
