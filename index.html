@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Vorrat">
+<title>Vorrat</title>
+<style>
+:root{
+  --bg:#f6f4ef;--card:#ffffff;--ink:#1d1d1b;--mute:#7a776f;--line:#e6e2d8;
+  --acc:#3d6b4f;--acc-soft:#e3eee6;--ok:#4f8a5f;--warn:#d39a2c;--bad:#c8553d;--grey:#b9b5ab;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 10px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#161614;--card:#22221f;--ink:#efede7;--mute:#9a968c;--line:#34332e;
+  --acc:#7fb393;--acc-soft:#2a3a2f;--ok:#7fb393;--warn:#e0b04f;--bad:#e07a62;--grey:#5d5a53;
+  --shadow:none}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+header{padding:calc(env(safe-area-inset-top) + 14px) 16px 8px;position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{margin:0;font-size:26px;letter-spacing:-.02em}
+header .sub{color:var(--mute);font-size:13px;margin-top:2px}
+main{padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav button{flex:1;padding:9px 0 8px;font-size:11px;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+nav button .ic{font-size:19px;line-height:1}
+nav button.on{color:var(--acc);font-weight:600}
+nav .badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--bad);color:#fff;border-radius:9px;font-size:10px;min-width:17px;height:17px;line-height:17px;padding:0 4px;font-weight:700}
+.search{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);outline:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:6px 11px;border-radius:20px;background:var(--card);border:1px solid var(--line);font-size:13px}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.grp{margin:16px 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+.list{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:center;gap:8px;padding:9px 10px 9px 12px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok)}
+.dot.knapp{background:var(--warn)}.dot.leer{background:var(--bad)}.dot.off{background:var(--grey)}
+.nm{flex:1;min-width:0;text-align:left}
+.nm b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm small{color:var(--mute);font-size:12px}
+.pill{font-size:12px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);color:var(--mute);min-width:58px;text-align:center}
+.pill.o1{border:1px solid var(--acc);background:var(--acc-soft);color:var(--acc);font-weight:600}
+.pill.o2{border:1px solid var(--warn);color:var(--warn);font-weight:600}
+.step{display:flex;align-items:center;background:var(--bg);border-radius:10px}
+.step button{width:34px;height:34px;font-size:19px;color:var(--acc)}
+.step span{min-width:18px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.fab{position:fixed;right:18px;bottom:calc(74px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:var(--acc);color:#fff;font-size:28px;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:9}
+.banner{display:flex;align-items:center;gap:10px;background:var(--acc-soft);color:var(--ink);border-radius:12px;padding:10px 12px;margin:4px 0 10px;font-size:14px}
+.banner button{margin-left:auto;background:var(--acc);color:#fff;padding:6px 12px;border-radius:9px;font-weight:600;font-size:13px;white-space:nowrap}
+.empty{text-align:center;color:var(--mute);padding:40px 20px}
+.btn{display:block;width:100%;padding:12px;border-radius:12px;background:var(--acc);color:#fff;font-weight:600;text-align:center}
+.btn.sec{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.bad{background:none;color:var(--bad);border:1px solid var(--line)}
+.btn.sm{display:inline-block;width:auto;padding:7px 12px;font-size:13px;border-radius:9px}
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:14px;margin:12px 0}
+.card h3{margin:0 0 6px;font-size:16px}
+.card p{margin:0 0 10px;color:var(--mute);font-size:13px}
+.row .buy{background:var(--acc);color:#fff;padding:7px 11px;border-radius:9px;font-size:13px;font-weight:600}
+.addrow{display:flex;gap:8px;margin-top:8px}
+.addrow input{flex:1}
+input.f,select.f,textarea.f{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);outline:none}
+textarea.f{min-height:120px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+label.l{display:block;font-size:12px;color:var(--mute);margin:12px 0 5px;font-weight:600}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h2{margin:0 0 4px;font-size:19px}
+.sheet .acts{display:flex;gap:8px;margin-top:18px}
+.sheet .acts .btn{flex:1}
+.dlg{background:var(--card);border-radius:16px;padding:18px;margin:auto 24px;max-width:340px}
+.ov.c{align-items:center}
+.hint{font-size:12px;color:var(--mute);margin-top:5px}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(140px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:10px;z-index:30;font-size:14px;max-width:520px;margin:0 auto}
+.toast button{margin-left:auto;color:var(--acc);font-weight:700;filter:brightness(1.4)}
+.chk{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:22px 18px;margin-top:10px;text-align:center}
+.chk .cat{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.chk .big{font-size:24px;font-weight:700;margin:6px 0 18px}
+.chk .ctl{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+.chk .step button{width:46px;height:46px;font-size:24px}
+.chk .step span{min-width:30px;font-size:20px}
+.chk .pill{font-size:14px;padding:12px 14px;min-width:96px}
+.prog{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0 2px}
+.prog i{display:block;height:100%;background:var(--acc)}
+.nav2{display:flex;gap:8px;margin-top:14px}
+.nav2 .btn{flex:1}
+.legend{font-size:12px;color:var(--mute);line-height:1.6}
+</style>
+</head>
+<body>
+<header><h1 id="ttl">Vorrat</h1><div class="sub" id="sub"></div></header>
+<main id="view"></main>
+<button class="fab" id="fab" aria-label="Artikel hinzufügen">+</button>
+<nav id="nav">
+  <button data-t="vorrat"><span class="ic">🫙</span>Vorrat</button>
+  <button data-t="nach"><span class="ic">🛒</span>Nachkaufen<span class="badge" id="bdg" hidden></span></button>
+  <button data-t="check"><span class="ic">✓</span>Check</button>
+  <button data-t="mehr"><span class="ic">⋯</span>Mehr</button>
+</nav>
+<script>
+const VERSION='1.0';
+const KEY='vorrat-v1';
+const CATS=['Nudeln & Reis','Konserven & Gläser','Backen','Gewürze & Öl','Frühstück','Snacks & Süßes','Getränke','Sonstiges'];
+const OPEN=['','offen','Rest'];
+const PROMPT=`Erkenne auf dem Foto alle Lebensmittel bzw. Vorräte. Gib NUR eine Liste aus, ohne Einleitung, eine Zeile pro Produkt im Format:
+Name | Kategorie | Anzahl geschlossener Packungen | angebrochen
+Für "angebrochen" schreibe "offen", "Rest" oder lass es leer.
+Kategorien (genau so schreiben): ${CATS.join(', ')}.
+Gleiche Produkte zusammenfassen. Kurze, allgemeine Namen ohne Marke (z. B. "Spaghetti", "Passierte Tomaten"). Wenn du dir bei etwas unsicher bist, setze ein "?" hinter den Namen.`;
+
+let S=load(), tab='vorrat', q='', cf='Alle', chk=null;
+
+function load(){
+  const d={items:[],extras:[],lastCheck:null};
+  try{const r=localStorage.getItem(KEY);if(r)return Object.assign(d,JSON.parse(r));}catch(e){}
+  return d;
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Speichern fehlgeschlagen');}updBadge();updSub();}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const byId=id=>S.items.find(i=>i.id===id);
+const sortNm=(a,b)=>a.name.localeCompare(b.name,'de');
+
+// Reserve-Prinzip: nachkaufen, wenn weniger geschlossene Packungen da sind als der Mindestbestand.
+function st(it){
+  if(it.min===0) return (it.full===0&&!it.open)?'off':'ok';
+  if(it.full>=it.min) return 'ok';
+  return (it.full===0&&!it.open)?'leer':'knapp';
+}
+function needs(it){return it.min>0&&it.full<it.min;}
+function desc(it){
+  const s=st(it), parts=[];
+  if(it.full) parts.push(it.full+(it.full===1?' Packung':' Packungen'));
+  if(it.open) parts.push(OPEN[it.open]==='Rest'?'Rest offen':'1 offen');
+  if(!parts.length) parts.push('leer');
+  if(s==='knapp') parts.push(it.full===0?'keine Reserve':'Reserve unter '+it.min);
+  return parts.join(' · ');
+}
+
+// Anbrechen nimmt eine geschlossene Packung weg; Rest → aufgebraucht.
+function cycleOpen(it){
+  if(!it.open){ if(it.full>0) it.full--; it.open=1; }
+  else if(it.open===1) it.open=2;
+  else it.open=0;
+}
+
+function updBadge(){const n=S.items.filter(needs).length+S.extras.length;const b=document.getElementById('bdg');b.hidden=!n;b.textContent=n;}
+function checkDue(){return S.items.length>0&&(!S.lastCheck||Date.now()-S.lastCheck>7*864e5);}
+function updSub(){
+  const n=S.items.length, k=S.items.filter(needs).length;
+  let t=n?`${n} Artikel · ${k} nachkaufen`:'Noch leer';
+  if(S.lastCheck){const d=Math.floor((Date.now()-S.lastCheck)/864e5);t+=` · Check ${d===0?'heute':d===1?'gestern':'vor '+d+' Tagen'}`;}
+  document.getElementById('sub').textContent=t;
+}
+
+function setTab(t){tab=t;if(t!=='check')chk=null;render();window.scrollTo(0,0);}
+document.getElementById('nav').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t);};
+document.getElementById('fab').onclick=()=>editSheet(null);
+
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+  document.getElementById('fab').style.display=tab==='vorrat'?'':'none';
+  document.getElementById('ttl').textContent={vorrat:'Vorrat',nach:'Nachkaufen',check:'Wochen-Check',mehr:'Mehr'}[tab];
+  ({vorrat:vVorrat,nach:vNach,check:vCheck,mehr:vMehr})[tab]();
+  updBadge();updSub();
+}
+
+/* ---------- Vorrat ---------- */
+function vVorrat(){
+  const v=document.getElementById('view');
+  if(!S.items.length){
+    v.innerHTML=`<div class="empty"><div style="font-size:40px">🫙</div><p>Noch nichts im Vorrat.</p>
+    <p class="legend">Tipp: Unter <b>Mehr → Foto-Import</b> kannst du den Schrank fotografieren und alles auf einmal übernehmen.</p>
+    <button class="btn" style="margin-top:14px" onclick="setTab('mehr')">Zum Foto-Import</button></div>`;return;
+  }
+  v.innerHTML=(checkDue()?`<div class="banner">Wochen-Check fällig<button onclick="setTab('check')">Starten</button></div>`:'')+
+  `<input class="search" id="q" type="search" placeholder="Suchen …" value="${esc(q)}">
+   <div class="chips" id="chips"></div><div id="list"></div>`;
+  const qi=document.getElementById('q');
+  qi.oninput=()=>{q=qi.value;renderList();};
+  renderChips();renderList();
+}
+function renderChips(){
+  const used=CATS.filter(c=>S.items.some(i=>i.cat===c));
+  if(cf!=='Alle'&&!used.includes(cf))cf='Alle';
+  const el=document.getElementById('chips');
+  el.innerHTML=['Alle',...used].map(c=>`<button class="chip ${c===cf?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('.chip');if(!b)return;cf=b.dataset.c;renderChips();renderList();};
+}
+function rowHtml(it){
+  return `<div class="row" data-id="${it.id}">
+    <span class="dot ${st(it)}"></span>
+    <button class="nm" data-a="edit"><b>${esc(it.name)}</b><small>${esc(desc(it))}</small></button>
+    <button class="pill ${it.open?'o'+it.open:''}" data-a="open">${it.open?(it.open===1?'◐ offen':'◔ Rest'):'anbrechen'}</button>
+    <div class="step"><button data-a="dec" aria-label="weniger">−</button><span>${it.full}</span><button data-a="inc" aria-label="mehr">+</button></div>
+  </div>`;
+}
+function renderList(){
+  const el=document.getElementById('list');if(!el)return;
+  const ql=q.trim().toLowerCase();
+  const items=S.items.filter(i=>(cf==='Alle'||i.cat===cf)&&(!ql||i.name.toLowerCase().includes(ql)));
+  if(!items.length){el.innerHTML=`<div class="empty">Nichts gefunden.</div>`;return;}
+  el.innerHTML=CATS.map(c=>{
+    const g=items.filter(i=>i.cat===c).sort(sortNm);
+    return g.length?`<div class="grp">${esc(c)}</div><div class="list">${g.map(rowHtml).join('')}</div>`:'';
+  }).join('');
+  el.onclick=rowAction(()=>renderList());
+}
+function rowAction(after){
+  return e=>{
+    const b=e.target.closest('[data-a]');if(!b)return;
+    const it=byId(b.closest('[data-id]').dataset.id);if(!it)return;
+    const a=b.dataset.a;
+    if(a==='edit'){editSheet(it);return;}
+    if(a==='inc')it.full++;
+    if(a==='dec'){if(it.full>0)it.full--;else return;}
+    if(a==='open')cycleOpen(it);
+    it.upd=Date.now();save();after();
+  };
+}
+
+/* ---------- Nachkaufen ---------- */
+function vNach(){
+  const v=document.getElementById('view');
+  const n=S.items.filter(needs).sort((a,b)=>(st(a)==='leer'?0:1)-(st(b)==='leer'?0:1)||sortNm(a,b));
+  let h='';
+  if(n.length||S.extras.length) h+=`<div style="display:flex;justify-content:flex-end;margin:4px 0 2px"><button class="btn sm sec" id="share">Liste teilen ↗</button></div>`;
+  if(n.length){
+    h+=`<div class="grp">Aus dem Vorrat</div><div class="list" id="nl">`+n.map(it=>`<div class="row" data-id="${it.id}">
+      <span class="dot ${st(it)}"></span>
+      <div class="nm"><b>${esc(it.name)}</b><small>${esc(desc(it))}</small></div>
+      <button class="buy" data-a="buy">Gekauft${buyQty(it)>1?' ×'+buyQty(it):''}</button></div>`).join('')+`</div>`;
+  } else h+=`<div class="empty" style="padding:24px">Alles da. 👍</div>`;
+  h+=`<div class="grp">Sonstiges</div>
+    <div class="list" id="xl">${S.extras.map((x,i)=>`<div class="row"><div class="nm"><b>${esc(x)}</b></div><button class="btn sm sec" data-i="${i}">Erledigt</button></div>`).join('')}</div>
+    <div class="addrow"><input class="search" id="xin" placeholder="Etwas anderes notieren …"><button class="btn sm" id="xadd">＋</button></div>
+    <p class="legend" style="margin-top:14px">Auf der Liste landet alles, wovon weniger geschlossene Packungen da sind als der Mindestbestand (Standard: 1, also „keine Reserve mehr“). „Gekauft“ bucht die Packungen direkt in den Vorrat.</p>`;
+  v.innerHTML=h;
+  const nl=document.getElementById('nl');
+  if(nl)nl.onclick=e=>{
+    const b=e.target.closest('[data-a="buy"]');if(!b)return;
+    const it=byId(b.closest('[data-id]').dataset.id);const prev={full:it.full};const add=buyQty(it);
+    it.full+=add;it.upd=Date.now();save();vNach();
+    toast(`${it.name}: +${add} eingebucht`,()=>{it.full=prev.full;save();vNach();});
+  };
+  document.getElementById('xl').onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;const i=+b.dataset.i;const x=S.extras.splice(i,1)[0];save();vNach();toast('Erledigt',()=>{S.extras.splice(i,0,x);save();vNach();});};
+  const xi=document.getElementById('xin');
+  const addX=()=>{const t=xi.value.trim();if(!t)return;S.extras.push(t);save();vNach();document.getElementById('xin').focus();};
+  document.getElementById('xadd').onclick=addX;
+  xi.onkeydown=e=>{if(e.key==='Enter')addX();};
+  const sh=document.getElementById('share');if(sh)sh.onclick=shareList;
+}
+function buyQty(it){return Math.max(1,it.min-it.full);}
+async function shareList(){
+  const n=S.items.filter(needs).sort(sortNm);
+  const lines=[...n.map(i=>'• '+i.name+(buyQty(i)>1?' ('+buyQty(i)+'×)':'')),...S.extras.map(x=>'• '+x)];
+  const text='Vorrat – nachkaufen:\n'+lines.join('\n');
+  try{if(navigator.share){await navigator.share({text});return;}}catch(e){if(e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(text);toast('Liste kopiert');}catch(e){toast('Teilen nicht möglich');}
+}
+
+/* ---------- Wochen-Check ---------- */
+function order(){const o=[];CATS.forEach(c=>S.items.filter(i=>i.cat===c).sort(sortNm).forEach(i=>o.push(i.id)));return o;}
+function vCheck(){
+  const v=document.getElementById('view');
+  if(!S.items.length){v.innerHTML=`<div class="empty">Erst Artikel anlegen, dann lohnt der Check.</div>`;return;}
+  if(!chk){
+    const last=S.lastCheck?new Date(S.lastCheck).toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'}):'noch nie';
+    v.innerHTML=`<div class="card"><h3>Einmal durch den Schrank</h3>
+      <p>${S.items.length} Artikel, jeweils kurz bestätigen oder korrigieren. Dauert etwa ${Math.max(1,Math.round(S.items.length*4/60))} Min.</p>
+      <p>Letzter Check: ${esc(last)}</p>
+      <button class="btn" id="go">Check starten</button></div>
+      <p class="legend">Reihenfolge nach Kategorien, so wie du vermutlich auch durch den Schrank gehst. Änderungen werden sofort gespeichert; du kannst jederzeit abbrechen.</p>`;
+    document.getElementById('go').onclick=()=>{chk={ids:order(),i:0,changed:0};vCheck();};
+    return;
+  }
+  if(chk.i>=chk.ids.length){
+    S.lastCheck=Date.now();save();
+    const k=S.items.filter(needs).length;
+    v.innerHTML=`<div class="chk"><div style="font-size:44px">✓</div><div class="big">Check erledigt</div>
+      <p style="color:var(--mute)">${chk.changed} Artikel korrigiert · ${k} auf der Nachkaufen-Liste</p>
+      ${k?`<button class="btn" onclick="setTab('nach')">Zur Nachkaufen-Liste</button>`:''}</div>`;
+    chk=null;return;
+  }
+  const it=byId(chk.ids[chk.i]);
+  if(!it){chk.i++;vCheck();return;}
+  const snap=JSON.stringify([it.full,it.open]);
+  v.innerHTML=`<div class="prog"><i style="width:${chk.i/chk.ids.length*100}%"></i></div>
+    <div class="legend">${chk.i+1} von ${chk.ids.length}</div>
+    <div class="chk" data-id="${it.id}">
+      <div class="cat">${esc(it.cat)}</div><div class="big">${esc(it.name)}</div>
+      <div class="ctl">
+        <div class="step"><button data-a="dec">−</button><span>${it.full}</span><button data-a="inc">+</button></div>
+        <button class="pill ${it.open?'o'+it.open:''}" data-a="open">${it.open?(it.open===1?'◐ offen':'◔ Rest'):'nichts offen'}</button>
+      </div>
+      <div class="legend" style="margin-top:10px">geschlossene Packungen · angebrochene Packung</div>
+    </div>
+    <div class="nav2"><button class="btn sec" id="back" ${chk.i===0?'disabled style="opacity:.4"':''}>Zurück</button><button class="btn" id="nx">Passt ✓</button></div>
+    <button class="btn sec" style="margin-top:8px" id="stop">Abbrechen</button>`;
+  const box=v.querySelector('.chk');
+  box.onclick=e=>{
+    const b=e.target.closest('[data-a]');if(!b)return;
+    if(b.dataset.a==='inc')it.full++;
+    if(b.dataset.a==='dec'&&it.full>0)it.full--;
+    if(b.dataset.a==='open'){it.open=(it.open+1)%3;} // im Check: Zustand direkt setzen, ohne Packung abzuziehen
+    box.querySelector('.step span').textContent=it.full;
+    const p=box.querySelector('.pill');p.className='pill '+(it.open?'o'+it.open:'');p.textContent=it.open?(it.open===1?'◐ offen':'◔ Rest'):'nichts offen';
+    document.getElementById('nx').textContent=JSON.stringify([it.full,it.open])===snap?'Passt ✓':'Gespeichert, weiter →';
+  };
+  document.getElementById('nx').onclick=()=>{if(JSON.stringify([it.full,it.open])!==snap){chk.changed++;it.upd=Date.now();}save();chk.i++;vCheck();};
+  document.getElementById('back').onclick=()=>{if(chk.i>0){save();chk.i--;vCheck();}};
+  document.getElementById('stop').onclick=()=>{save();chk=null;vCheck();};
+}
+
+/* ---------- Mehr ---------- */
+function vMehr(){
+  const v=document.getElementById('view');
+  v.innerHTML=`
+  <div class="card"><h3>📷 Foto-Import</h3>
+    <p>1. Prompt kopieren · 2. In der Claude-App ein Foto vom Schrank machen und den Prompt dazu einfügen · 3. Die Antwort kopieren und hier einfügen.</p>
+    <button class="btn sec" id="cp">Prompt kopieren</button>
+    <label class="l">Erkannte Liste einfügen</label>
+    <textarea class="f" id="imp" placeholder="Spaghetti | Nudeln & Reis | 2 | offen&#10;Passierte Tomaten | Konserven & Gläser | 3 |"></textarea>
+    <div class="hint">Bekannte Artikel werden aktualisiert, neue angelegt. Mehrere Fotos nacheinander gehen auch.</div>
+    <button class="btn" style="margin-top:10px" id="ib">Übernehmen</button>
+  </div>
+  <div class="card"><h3>So funktioniert's</h3>
+    <div class="legend">
+    <b>Zahl</b> = geschlossene Packungen. <b>anbrechen</b> öffnet eine davon (→ ◐ offen). Nochmal tippen → ◔ Rest, nochmal → aufgebraucht.<br>
+    <b>Nachkaufen</b>: sobald weniger geschlossene Packungen da sind als der Mindestbestand (Standard 1). Mindestbestand 0 = kommt nie auf die Liste.<br>
+    <b>Punkte</b>: 🟢 Reserve da · 🟠 nur noch offen / zu wenig · 🔴 leer
+    </div></div>
+  <div class="card"><h3>Sicherung</h3>
+    <p>Die Daten liegen nur auf diesem iPhone. Ab und zu sichern schadet nicht.</p>
+    <button class="btn sec" id="ex">Backup exportieren</button>
+    <button class="btn sec" style="margin-top:8px" id="imb">Backup importieren</button>
+    <input type="file" id="fi" accept="application/json,.json" hidden>
+  </div>
+  <button class="btn bad" id="rs">Alle Daten löschen</button>
+  <p class="legend" style="text-align:center;margin-top:16px">Vorrat V${VERSION}</p>`;
+  document.getElementById('cp').onclick=async()=>{try{await navigator.clipboard.writeText(PROMPT);toast('Prompt kopiert');}catch(e){toast('Kopieren nicht möglich');}};
+  document.getElementById('ib').onclick=()=>doImport(document.getElementById('imp').value);
+  document.getElementById('ex').onclick=exportData;
+  document.getElementById('imb').onclick=()=>document.getElementById('fi').click();
+  document.getElementById('fi').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{
+    try{const d=JSON.parse(r.result);if(!Array.isArray(d.items))throw 0;
+      dialog(`Backup mit ${d.items.length} Artikeln laden? Der aktuelle Stand wird ersetzt.`,'Laden',()=>{S=Object.assign({items:[],extras:[],lastCheck:null},d);save();toast('Backup geladen');render();});
+    }catch(err){toast('Datei nicht lesbar');}};r.readAsText(f);e.target.value='';};
+  document.getElementById('rs').onclick=()=>dialog('Wirklich alle Artikel und Listen löschen?','Löschen',()=>{S={items:[],extras:[],lastCheck:null};save();render();},true);
+}
+function matchCat(x){
+  if(!x)return 'Sonstiges';x=String(x).toLowerCase().trim();if(!x)return 'Sonstiges';
+  return CATS.find(c=>c.toLowerCase()===x)||CATS.find(c=>c.toLowerCase().split(/\s*&\s*/).some(w=>x.includes(w)||w.includes(x)))||'Sonstiges';
+}
+function parseOpen(x){
+  if(x==null)return 0;x=String(x).toLowerCase().trim();
+  if(x.includes('rest')||x==='2')return 2;
+  if(x.includes('offen')||x.includes('angebr')||x.includes('halb')||x==='1'||x==='ja')return 1;
+  return 0;
+}
+function parseImport(txt){
+  txt=(txt||'').trim();let rows=[];
+  if(/^[\[{]/.test(txt)){
+    try{let d=JSON.parse(txt);if(d.items)d=d.items;rows=d.map(o=>({name:o.name,cat:o.cat||o.kategorie,full:o.full??o.anzahl,open:o.open??o.angebrochen}));}catch(e){}
+  } else {
+    txt.split('\n').forEach(l=>{
+      l=l.trim().replace(/^(?:[-•*]|\d+[.)])\s+/,'').replace(/^\|/,'').replace(/\|$/,'').trim();
+      if(!l||/^[-\s|:]+$/.test(l)||/^name\s*[|;]/i.test(l))return;
+      const p=l.split(/\s*[|;\t]\s*/);rows.push({name:p[0],cat:p[1],full:p[2],open:p[3]});
+    });
+  }
+  return rows.filter(r=>r.name&&String(r.name).trim()).map(r=>{
+    const f=parseInt(r.full,10);
+    return {name:String(r.name).trim(),cat:matchCat(r.cat),full:isNaN(f)?1:Math.max(0,f),open:parseOpen(r.open)};
+  });
+}
+function doImport(txt){
+  const rows=parseImport(txt);
+  if(!rows.length){toast('Keine Artikel erkannt');return;}
+  let nu=0,up=0;rows.forEach(r=>{S.items.some(i=>i.name.toLowerCase()===r.name.toLowerCase())?up++:nu++;});
+  dialog(`${nu} neue Artikel, ${up} aktualisiert. Übernehmen?`,'Übernehmen',()=>{
+    rows.forEach(r=>{
+      const ex=S.items.find(i=>i.name.toLowerCase()===r.name.toLowerCase());
+      if(ex){ex.full=r.full;ex.open=r.open;ex.upd=Date.now();}
+      else S.items.push({id:uid(),name:r.name,cat:r.cat,full:r.full,open:r.open,min:1,upd:Date.now()});
+    });
+    save();toast('Import fertig');document.getElementById('imp').value='';
+  });
+}
+async function exportData(){
+  const d=new Date().toISOString().slice(0,10);
+  const json=JSON.stringify(Object.assign({app:'vorrat',version:VERSION},S),null,1);
+  const file=new File([json],`vorrat-backup-${d}.json`,{type:'application/json'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file]});return;}}catch(e){if(e.name==='AbortError')return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+}
+
+/* ---------- Sheets, Dialoge, Toast ---------- */
+function editSheet(it){
+  const isNew=!it;const d=it||{name:'',cat:cf!=='Alle'?cf:CATS[0],full:1,open:0,min:1};
+  let full=d.full,min=d.min;
+  const ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML=`<div class="sheet">
+    <h2>${isNew?'Neuer Artikel':'Artikel bearbeiten'}</h2>
+    <label class="l">Name</label><input class="f" id="en" value="${esc(d.name)}" placeholder="z. B. Basmati-Reis" autocomplete="off">
+    <label class="l">Kategorie</label><select class="f" id="ec">${CATS.map(c=>`<option ${c===d.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <div style="display:flex;gap:16px">
+      <div style="flex:1"><label class="l">Geschlossene Packungen</label><div class="step" style="width:fit-content"><button data-s="f-">−</button><span id="ef">${full}</span><button data-s="f+">+</button></div></div>
+      <div style="flex:1"><label class="l">Mindestbestand</label><div class="step" style="width:fit-content"><button data-s="m-">−</button><span id="em">${min}</span><button data-s="m+">+</button></div></div>
+    </div>
+    <div class="hint" id="eh"></div>
+    <div class="acts"><button class="btn sec" id="ecx">Abbrechen</button><button class="btn" id="eok">Speichern</button></div>
+    ${isNew?'':'<button class="btn bad" style="margin-top:10px" id="edel">Löschen</button>'}
+  </div>`;
+  document.body.appendChild(ov);
+  const hint=()=>{ov.querySelector('#eh').textContent=min===0?'Kommt nie auf die Nachkaufen-Liste.':`Auf die Liste, sobald weniger als ${min} geschlossene ${min===1?'Packung':'Packungen'} da ${min===1?'ist':'sind'}.`;};hint();
+  ov.onclick=e=>{
+    if(e.target===ov){ov.remove();return;}
+    const s=e.target.closest('[data-s]');if(!s)return;
+    const k=s.dataset.s;if(k==='f-')full=Math.max(0,full-1);if(k==='f+')full++;if(k==='m-')min=Math.max(0,min-1);if(k==='m+')min++;
+    ov.querySelector('#ef').textContent=full;ov.querySelector('#em').textContent=min;hint();
+  };
+  ov.querySelector('#ecx').onclick=()=>ov.remove();
+  ov.querySelector('#eok').onclick=()=>{
+    const name=ov.querySelector('#en').value.trim();if(!name){ov.querySelector('#en').focus();return;}
+    const dup=S.items.find(i=>i.name.toLowerCase()===name.toLowerCase()&&i!==it);
+    if(dup){toast('Gibt es schon');return;}
+    const cat=ov.querySelector('#ec').value;
+    if(isNew)S.items.push({id:uid(),name,cat,full,open:0,min,upd:Date.now()});
+    else Object.assign(it,{name,cat,full,min,upd:Date.now()});
+    save();ov.remove();render();
+  };
+  const del=ov.querySelector('#edel');
+  if(del)del.onclick=()=>dialog(`„${it.name}“ löschen?`,'Löschen',()=>{const idx=S.items.indexOf(it);S.items.splice(idx,1);save();ov.remove();render();toast('Gelöscht',()=>{S.items.splice(idx,0,it);save();render();});},true);
+  if(isNew)setTimeout(()=>ov.querySelector('#en').focus(),50);
+}
+function dialog(msg,ok,fn,danger){
+  const ov=document.createElement('div');ov.className='ov c';
+  ov.innerHTML=`<div class="dlg"><p style="margin:0 0 16px">${esc(msg)}</p><div style="display:flex;gap:8px"><button class="btn sec" data-x>Abbrechen</button><button class="btn ${danger?'bad':''}" data-ok>${esc(ok)}</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov||e.target.closest('[data-x]'))ov.remove();if(e.target.closest('[data-ok]')){ov.remove();fn();}};
+}
+let tt;
+function toast(msg,undo){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());clearTimeout(tt);
+  const t=document.createElement('div');t.className='toast';
+  t.innerHTML=`<span>${esc(msg)}</span>${undo?'<button>Rückgängig</button>':''}`;
+  if(undo)t.querySelector('button').onclick=()=>{undo();t.remove();};
+  document.body.appendChild(t);tt=setTimeout(()=>t.remove(),undo?4500:2200);
+}
+
+render();
+</script>
+</body>
+</html>
